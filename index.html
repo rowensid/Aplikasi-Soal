@@ -17,79 +17,19 @@
         font-family: 'Merriweather', serif;
       }
 
-      /* Print Styles */
+      /* Standard Print fallback for Ctrl+P */
       @media print {
-        @page {
-          margin: 0;
-          size: auto;
+        nav, .no-print {
+          display: none !important;
         }
-        
-        /* Reset Body */
         body {
           background-color: white;
-          margin: 0;
-          padding: 0;
         }
-
-        /* Hide everything by default */
-        body > * {
-          display: none !important;
-        }
-
-        /* Only display the root to reach the content, but hide its layout impact */
-        body > #root {
-          display: block !important;
-        }
-        
-        /* Hide app shell elements explicitly */
-        nav, footer, .no-print {
-          display: none !important;
-        }
-
-        /* Isolate the Print Container */
-        .print-container {
-          display: block !important;
-          position: absolute !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 100% !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          background: white;
-          visibility: visible !important;
-        }
-        
-        /* Ensure children are visible */
-        .print-container * {
-          visibility: visible !important;
-        }
-
-        /* Reset text colors and shadows */
+        /* Ensure text contrast */
         * {
+          color: black !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
-        }
-        
-        .shadow-xl, .shadow-2xl, .shadow-lg {
-          box-shadow: none !important;
-        }
-        
-        /* Ensure Text is Black */
-        p, span, h1, h2, h3, h4, td, th, li, div {
-           color: black !important;
-        }
-
-        /* Page Breaks */
-        .page-break {
-          page-break-before: always !important;
-          break-before: page !important;
-          margin-top: 0 !important;
-          /* We rely on padding on the element itself for margins, as @page has 0 margin */
-        }
-        
-        /* Ensure borders print */
-        .border, .border-b, .border-t, .border-l, .border-r {
-          border-color: black !important;
         }
       }
     </style>

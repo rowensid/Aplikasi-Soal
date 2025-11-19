@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { ExamData, QuestionMCQ, QuestionEssay } from '../types';
 import { Printer, FileDown, Eye, EyeOff, Edit3, Save, FileType } from 'lucide-react';
 
@@ -10,24 +11,25 @@ export const ExamPaper: React.FC<Props> = ({ data }) => {
   const [editableData, setEditableData] = useState<ExamData>(data);
   const [isEditing, setIsEditing] = useState(false);
   const [showKey, setShowKey] = useState(true);
+  const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setEditableData(data);
   }, [data]);
 
-  // 1. Handle Print / PDF (Native Browser Engine is Best for Text)
-  const handlePrintOrPDF = () => {
-    // Ensure editing mode is off so input fields turn back into text
+  // Robust Print Handler
+  const handlePrint = () => {
+    // 1. Turn off editing mode to remove textareas
     setIsEditing(false);
     
-    // Use timeout to allow React to finish re-rendering the DOM (removing textareas)
+    // 2. Use setTimeout to allow React State to flush/render the "read-only" view
+    // before the browser opens the print dialog.
     setTimeout(() => {
-      window.focus(); // Required for some browsers/iframes to trigger print
       window.print();
-    }, 300);
+    }, 100);
   };
 
-  // 2. Handle Word Export (Reconstructed HTML specifically for Word)
+  // Handle Word Export
   const handleExportWord = () => {
     setIsEditing(false);
     
@@ -235,14 +237,71 @@ export const ExamPaper: React.FC<Props> = ({ data }) => {
     }));
   };
 
-  // NOTE: Removed 'print:mb-0' and 'print:w-full' to allow index.html @media print to control absolute sizing.
-  // Kept padding to act as margins in print mode.
-  const paperSheetClass = "paper-sheet w-full max-w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[2cm] text-black font-serif text-[11pt] leading-relaxed relative mb-8 print:mb-0 print:shadow-none print:w-[100%] print:p-[2cm] page-break";
+  // Paper Sheet Classes
+  const paperSheetClass = "paper-sheet w-full max-w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[2cm] text-black font-serif text-[11pt] leading-relaxed relative mb-8";
 
   return (
-    <div className="w-full flex flex-col items-center pb-12 bg-gray-100 print:bg-white print:pb-0">
+    <div className="w-full flex flex-col items-center pb-12 bg-gray-100 print:bg-white print:pb-0 print:block">
+      {/* PRINT STYLES: VISIBILITY TRICK */}
+      {/* This technique hides ALL body content, then specifically shows only the exam paper.
+          It positions the exam paper at 0,0 absolute to ensure it takes up the full print page,
+          ignoring the sidebar or navbar layout. */}
+      <style>{`
+        @media print {
+          @page {
+            margin: 0;
+            size: auto;
+          }
+          
+          body {
+            background-color: white;
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact;
+          }
+
+          /* HIDE EVERYTHING */
+          body * {
+            visibility: hidden;
+          }
+
+          /* SHOW ONLY THE PRINT CONTAINER */
+          .print-container, .print-container * {
+            visibility: visible;
+          }
+
+          /* POSITION IT OVER EVERYTHING */
+          .print-container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+          }
+          
+          /* RESET SHEET STYLING FOR PRINT */
+          .paper-sheet {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            padding: 2cm !important;
+            page-break-after: always;
+          }
+          
+          .paper-sheet:last-child {
+             page-break-after: auto;
+          }
+          
+          /* HIDE UI ELEMENTS EXPLICITLY */
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+
       {/* TOOLBAR */}
-      <div className="w-full max-w-[210mm] bg-slate-800 text-white p-4 rounded-t-xl flex flex-col sm:flex-row justify-between items-center no-print sticky top-0 z-20 shadow-lg gap-4 mb-8">
+      <div className="w-full max-w-[210mm] bg-slate-800 text-white p-4 rounded-t-xl flex flex-col sm:flex-row justify-between items-center no-print sticky top-16 z-30 shadow-lg gap-4 mb-8">
         <div className="flex items-center gap-4 w-full sm:w-auto justify-center">
           <button 
             onClick={() => setIsEditing(!isEditing)}
@@ -262,21 +321,20 @@ export const ExamPaper: React.FC<Props> = ({ data }) => {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
-           <button onClick={handlePrintOrPDF} className="flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-bold transition-colors text-sm" title="Print ke PDF">
-             <FileType className="w-4 h-4" /> Save as PDF
+           <button onClick={handlePrint} className="flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-bold transition-colors text-sm" title="Membuka dialog print browser, lalu pilih 'Save as PDF'">
+             <FileType className="w-4 h-4" /> Download PDF
            </button>
            <button onClick={handleExportWord} className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition-colors text-sm">
              <FileDown className="w-4 h-4" /> Word
            </button>
-           <button onClick={handlePrintOrPDF} className="flex items-center gap-2 px-3 py-2 bg-white text-slate-900 hover:bg-gray-100 rounded-lg font-bold transition-colors text-sm">
+           <button onClick={handlePrint} className="flex items-center gap-2 px-3 py-2 bg-white text-slate-900 hover:bg-gray-100 rounded-lg font-bold transition-colors text-sm">
              <Printer className="w-4 h-4" /> Print
            </button>
         </div>
       </div>
 
-      {/* PRINT CONTAINER WRAPPER */}
-      {/* Ensure this container is targeted by print CSS */}
-      <div className="print-container w-full flex flex-col items-center print:block">
+      {/* PRINT CONTAINER WRAPPER - Ref captured here */}
+      <div ref={printRef} className="print-container w-full flex flex-col items-center">
         
         {/* --- SHEET 1: MAIN EXAM PAPER --- */}
         <div className={paperSheetClass}>
@@ -349,7 +407,7 @@ export const ExamPaper: React.FC<Props> = ({ data }) => {
              <h3 className="font-bold mb-4 text-black">A. PILIHAN GANDA</h3>
              <div className="space-y-4 text-black">
                {editableData.multipleChoice.map((q, i) => (
-                 <div key={q.id} className="question-block break-inside-avoid page-break-inside-avoid mb-4 text-black" style={{ pageBreakInside: 'avoid' }}>
+                 <div key={q.id} className="question-block avoid-break mb-4 text-black">
                    <div className="flex gap-1">
                       <span className="font-bold min-w-[24px] text-black">{i + 1}.</span>
                       <div className="w-full text-black">
@@ -397,7 +455,7 @@ export const ExamPaper: React.FC<Props> = ({ data }) => {
              <h3 className="font-bold mb-4 text-black">B. URAIAN</h3>
              <div className="space-y-6 text-black">
                {editableData.essay.map((q, i) => (
-                 <div key={q.id} className="question-block break-inside-avoid page-break-inside-avoid mb-4 text-black" style={{ pageBreakInside: 'avoid' }}>
+                 <div key={q.id} className="question-block avoid-break mb-4 text-black">
                    <div className="flex gap-1 text-black">
                       <span className="font-bold min-w-[24px] text-black">{i + 1}.</span>
                       <div className="w-full text-black">
@@ -419,7 +477,7 @@ export const ExamPaper: React.FC<Props> = ({ data }) => {
           </div>
 
           {/* 7. TANDA TANGAN */}
-          <div className="flex justify-between mt-12 break-inside-avoid page-break-inside-avoid text-black" style={{ pageBreakInside: 'avoid' }}>
+          <div className="flex justify-between mt-12 avoid-break text-black">
              <div className="text-center text-black">
                 <p className="text-black">Mengetahui,</p>
                 <p className="text-black">Kepala Sekolah</p>
@@ -439,14 +497,14 @@ export const ExamPaper: React.FC<Props> = ({ data }) => {
 
         {/* --- SHEET 2: KUNCI JAWABAN --- */}
         {showKey && (
-          <div className={`${paperSheetClass} print:break-before-page`}>
+          <div className={`${paperSheetClass} break-before-page`}>
             <h1 className="text-center font-bold text-lg mb-6 text-black border-b-2 border-black pb-2">KUNCI JAWABAN & PEDOMAN PENSKORAN</h1>
             
             <div className="mb-6 text-black">
               <h3 className="font-bold border-b border-black mb-2 text-black bg-gray-100 p-1">A. KUNCI JAWABAN PILIHAN GANDA</h3>
               <div className="grid grid-cols-5 gap-2 text-sm text-black mt-4">
                 {editableData.multipleChoice.map((q, i) => (
-                  <div key={q.id} className="p-1 border border-gray-200 text-center text-black break-inside-avoid" style={{ pageBreakInside: 'avoid' }}>
+                  <div key={q.id} className="p-1 border border-gray-200 text-center text-black avoid-break">
                     <span className="font-bold text-black">{i + 1}. {q.correctAnswer}</span>
                   </div>
                 ))}
@@ -464,7 +522,7 @@ export const ExamPaper: React.FC<Props> = ({ data }) => {
                  </thead>
                  <tbody>
                    {editableData.essay.map((q, i) => (
-                     <tr key={q.id} className="text-black break-inside-avoid page-break-inside-avoid" style={{ pageBreakInside: 'avoid' }}>
+                     <tr key={q.id} className="text-black avoid-break">
                        <td className="text-center font-bold border border-black text-black p-2 align-top">{i + 1}</td>
                        <td className="whitespace-pre-wrap border border-black p-2 text-black">
                          {isEditing ? (
@@ -488,7 +546,7 @@ export const ExamPaper: React.FC<Props> = ({ data }) => {
 
         {/* --- SHEET 3: KISI-KISI --- */}
         {showKey && (
-          <div className={`${paperSheetClass} print:break-before-page`}>
+          <div className={`${paperSheetClass} break-before-page`}>
              <h1 className="text-center font-bold text-lg mb-6 text-black border-b-2 border-black pb-2">KISI-KISI PENULISAN SOAL</h1>
              
              <div className="mb-4 text-sm text-black">
@@ -511,7 +569,7 @@ export const ExamPaper: React.FC<Props> = ({ data }) => {
                 <tbody>
                   {/* Combine MCQ and Essay for Grid */}
                   {[...editableData.multipleChoice.map(q => ({...q, type: 'PG'})), ...editableData.essay.map(q => ({...q, type: 'Uraian'}))].map((row, i) => (
-                    <tr key={i} className="text-black break-inside-avoid page-break-inside-avoid" style={{ pageBreakInside: 'avoid' }}>
+                    <tr key={i} className="text-black avoid-break">
                       <td className="text-center border border-black p-1 text-black align-top">{i+1}</td>
                       <td className="border border-black p-1 text-black align-top">{row.cp || '-'}</td>
                       <td className="border border-black p-1 text-black align-top">{row.material || '-'}</td>
