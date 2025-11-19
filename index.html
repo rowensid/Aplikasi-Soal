@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GeoExam Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+      
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f3f4f6;
+      }
+
+      .font-serif {
+        font-family: 'Merriweather', serif;
+      }
+
+      /* Print Styles */
+      @media print {
+        @page {
+          margin: 0;
+          size: auto;
+        }
+        
+        /* Reset Body */
+        body {
+          background-color: white;
+          margin: 0;
+          padding: 0;
+        }
+
+        /* Hide everything by default */
+        body > * {
+          display: none !important;
+        }
+
+        /* Only display the root to reach the content, but hide its layout impact */
+        body > #root {
+          display: block !important;
+        }
+        
+        /* Hide app shell elements explicitly */
+        nav, footer, .no-print {
+          display: none !important;
+        }
+
+        /* Isolate the Print Container */
+        .print-container {
+          display: block !important;
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: white;
+          visibility: visible !important;
+        }
+        
+        /* Ensure children are visible */
+        .print-container * {
+          visibility: visible !important;
+        }
+
+        /* Reset text colors and shadows */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        
+        .shadow-xl, .shadow-2xl, .shadow-lg {
+          box-shadow: none !important;
+        }
+        
+        /* Ensure Text is Black */
+        p, span, h1, h2, h3, h4, td, th, li, div {
+           color: black !important;
+        }
+
+        /* Page Breaks */
+        .page-break {
+          page-break-before: always !important;
+          break-before: page !important;
+          margin-top: 0 !important;
+          /* We rely on padding on the element itself for margins, as @page has 0 margin */
+        }
+        
+        /* Ensure borders print */
+        .border, .border-b, .border-t, .border-l, .border-r {
+          border-color: black !important;
+        }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.3",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
