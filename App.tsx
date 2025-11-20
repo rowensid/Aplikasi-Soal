@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Globe2, LogOut, LayoutDashboard, FileText, Code2 } from 'lucide-react';
 import { GradeLevel, Semester, ExamData, GeneratorConfig, User, SchoolLevel } from './types';
@@ -73,9 +72,9 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-900 font-sans flex flex-col">
+    <div className="min-h-screen bg-gray-100 text-gray-900 font-sans flex flex-col print:bg-white">
       {/* Navigation / Header - Hidden on Print */}
-      <nav className="bg-slate-900 border-b border-slate-800 no-print text-white shadow-md sticky top-0 z-50">
+      <nav className="bg-slate-900 border-b border-slate-800 no-print print:hidden text-white shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center gap-3">
@@ -104,11 +103,11 @@ function App() {
         </div>
       </nav>
 
-      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full print:p-0 print:m-0 print:max-w-none print:w-full">
         
         {/* ADMIN VIEW */}
         {user.role === 'admin' && (
-          <div className="space-y-6">
+          <div className="space-y-6 print:hidden">
             <div className="flex items-center gap-2 mb-4">
                <LayoutDashboard className="text-blue-600" />
                <h2 className="text-2xl font-bold text-gray-800">Dashboard Admin</h2>
@@ -119,10 +118,10 @@ function App() {
 
         {/* USER VIEW (TEACHER) */}
         {user.role === 'user' && (
-          <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex flex-col lg:flex-row gap-8 print:block">
             
-            {/* Left Sidebar: Controls */}
-            <div className="w-full lg:w-1/4 flex-shrink-0 no-print">
+            {/* Left Sidebar: Controls - Hidden on Print */}
+            <div className="w-full lg:w-1/4 flex-shrink-0 no-print print:hidden">
               <ConfigurationPanel 
                 config={config}
                 setConfig={setConfig}
@@ -137,10 +136,10 @@ function App() {
               )}
             </div>
 
-            {/* Right Content: Exam Preview */}
-            <div className="w-full lg:w-3/4">
+            {/* Right Content: Exam Preview - Full Width on Print */}
+            <div className="w-full lg:w-3/4 print:w-full print:max-w-none">
               {!examData && !loading && (
-                <div className="bg-white border-2 border-dashed border-gray-300 rounded-xl p-12 text-center text-gray-500 h-[600px] flex flex-col justify-center items-center">
+                <div className="bg-white border-2 border-dashed border-gray-300 rounded-xl p-12 text-center text-gray-500 h-[600px] flex flex-col justify-center items-center no-print">
                   <div className="bg-gray-50 p-6 rounded-full mb-4">
                     <FileText className="w-16 h-16 text-gray-300" />
                   </div>
@@ -152,7 +151,7 @@ function App() {
               )}
 
               {loading && (
-                <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-gray-200 h-[600px] flex flex-col justify-center items-center">
+                <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-gray-200 h-[600px] flex flex-col justify-center items-center no-print">
                   <div className="animate-pulse flex flex-col items-center w-full max-w-lg">
                     <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
                     <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
@@ -174,8 +173,8 @@ function App() {
         )}
       </main>
 
-      {/* FOOTER VRS SPACE */}
-      <footer className="no-print py-6 text-center border-t border-gray-200 bg-gray-50 mt-auto">
+      {/* FOOTER */}
+      <footer className="no-print print:hidden py-6 text-center border-t border-gray-200 bg-gray-50 mt-auto">
         <div className="flex items-center justify-center gap-2 text-slate-500 text-sm">
           <Code2 className="w-4 h-4" />
           <span>Developed by <span className="font-bold text-blue-700">VRS Space</span></span>

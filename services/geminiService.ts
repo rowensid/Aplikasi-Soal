@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { ExamData, GeneratorConfig, SchoolLevel } from '../types';
 import { CURRICULUM_CONTEXT } from './curriculumData';
@@ -26,14 +25,32 @@ export const generateExam = async (config: GeneratorConfig): Promise<ExamData> =
   }
 
   let audienceContext = "";
+  let specificConstraints = "";
+
   if (level === SchoolLevel.SMP) {
     audienceContext = "Target Audience: Siswa SMP (Fase D Kurikulum Merdeka). Use simpler language appropriate for 12-15 year olds.";
   } else if (level === SchoolLevel.SMK) {
     audienceContext = `Target Audience: Siswa SMK (Sekolah Menengah Kejuruan). Context: **Vocational/Industrial**. 
-    For productive subjects (e.g., TKJ, RPL, Otomotif), focus on practical case studies, troubleshooting, and industrial standards. 
-    For general subjects, relate them to the work environment where possible.`;
+    For productive subjects (e.g., TKJ, RPL, Otomotif, PKK), focus on practical case studies, troubleshooting, and industrial standards.`;
   } else {
     audienceContext = "Target Audience: Siswa SMA (Fase E/F Kurikulum Merdeka). Focus on Academic and Scientific reasoning.";
+  }
+
+  // FIX: Ensure PKK/Mulok are treated as written exams with grids
+  if (subject.toLowerCase().includes('pkk') || subject.toLowerCase().includes('kewirausahaan')) {
+    specificConstraints = `
+      SPECIAL INSTRUCTION FOR PKK (Kewirausahaan):
+      - Although this is a vocational subject, you MUST generate a **Standard Written Theory Exam** (Ujian Tulis).
+      - Focus on Theory: Business Planning, Cost Calculation (HPP), Marketing Strategy, SWOT Analysis, IPR (HAKI).
+      - Do NOT generate practical checklists. 
+      - MANDATORY: You must fill the 'cp' (Capaian Pembelajaran), 'atp', and 'indicator' fields for every question. Do not leave them blank.
+    `;
+  } else if (subject.toLowerCase().includes('mulok') || subject.toLowerCase().includes('muatan lokal')) {
+     specificConstraints = `
+      SPECIAL INSTRUCTION FOR MULOK:
+      - Treat this as a formal academic subject about Local Wisdom, Culture, or Specific Regional Skills.
+      - MANDATORY: Generate full 'cp', 'atp', and 'indicator' for the Grid.
+    `;
   }
 
   const topicClause = config.topic 
@@ -49,6 +66,7 @@ export const generateExam = async (config: GeneratorConfig): Promise<ExamData> =
     Semester: ${config.semester}
     Subject: ${subject}
     ${audienceContext}
+    ${specificConstraints}
     
     OFFICIAL CURRICULUM REFERENCE (Must Follow):
     ${curriculumContext}
@@ -57,10 +75,11 @@ export const generateExam = async (config: GeneratorConfig): Promise<ExamData> =
 
     Directives for Content Generation:
     1. **Kisi-kisi (Exam Grid)**: This is CRITICAL. For EVERY question, generate:
-       - 'cp' (Capaian Pembelajaran): The broad competency standard.
-       - 'atp' (Alur Tujuan Pembelajaran): The specific learning objective.
+       - 'cp' (Capaian Pembelajaran): The broad competency standard. DO NOT leave empty.
+       - 'atp' (Alur Tujuan Pembelajaran): The specific learning objective. DO NOT leave empty.
        - 'material' (Materi Esensial): The specific topic focus.
        - 'indicator' (Indikator Soal): Must be **OPERATIONAL** and specific. START with "Disajikan...".
+       - **IMPORTANT**: Never leave these fields empty, even for vocational subjects. Create appropriate academic indicators.
     
     2. **Question Quality**:
        - Questions must use **HOTS** (Higher Order Thinking Skills) where appropriate.
@@ -93,6 +112,7 @@ export const generateExam = async (config: GeneratorConfig): Promise<ExamData> =
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+        // We leave maxOutputTokens flexible to ensure full exam generation
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -112,10 +132,10 @@ export const generateExam = async (config: GeneratorConfig): Promise<ExamData> =
                     description: "Array of 5 strings. Do NOT include 'A.' or 'B.' prefixes. Plain text only."
                   },
                   correctAnswer: { type: Type.STRING, description: "Just the letter, e.g., 'A'" },
-                  cp: { type: Type.STRING },
-                  atp: { type: Type.STRING },
-                  material: { type: Type.STRING },
-                  indicator: { type: Type.STRING },
+                  cp: { type: Type.STRING, description: "Capaian Pembelajaran (Fill with relevant competency)" },
+                  atp: { type: Type.STRING, description: "Alur Tujuan Pembelajaran (Fill with specific objective)" },
+                  material: { type: Type.STRING, description: "Materi (Must be filled)" },
+                  indicator: { type: Type.STRING, description: "Indikator Soal (Must be filled)" },
                 },
                 required: ["id", "question", "options", "correctAnswer", "cp", "atp", "material", "indicator"]
               }
@@ -128,10 +148,10 @@ export const generateExam = async (config: GeneratorConfig): Promise<ExamData> =
                   id: { type: Type.INTEGER },
                   question: { type: Type.STRING, description: "Plain text only." },
                   answerKey: { type: Type.STRING, description: "Full answer + Rubric. Use newlines for structure. Plain text only, no markdown." },
-                  cp: { type: Type.STRING },
-                  atp: { type: Type.STRING },
-                  material: { type: Type.STRING },
-                  indicator: { type: Type.STRING },
+                  cp: { type: Type.STRING, description: "Capaian Pembelajaran (Fill with relevant competency)" },
+                  atp: { type: Type.STRING, description: "Alur Tujuan Pembelajaran (Fill with specific objective)" },
+                  material: { type: Type.STRING, description: "Materi (Must be filled)" },
+                  indicator: { type: Type.STRING, description: "Indikator Soal (Must be filled)" },
                 },
                 required: ["id", "question", "answerKey", "cp", "atp", "material", "indicator"]
               }
@@ -142,25 +162,36 @@ export const generateExam = async (config: GeneratorConfig): Promise<ExamData> =
       }
     });
 
-    if (response.text) {
-      const parsedData = JSON.parse(response.text);
-      // Inject user config and generated date into the data
-      return {
-        ...parsedData,
-        subject: subject,
-        schoolName: config.schoolName,
-        logoUrl: config.logoUrl,
-        headmasterName: config.headmasterName,
-        headmasterNIP: config.headmasterNIP,
-        teacherName: config.teacherName,
-        teacherNIP: config.teacherNIP,
-        date: formattedDate
-      } as ExamData;
-    } else {
-      throw new Error("Empty response from AI");
+    // Parse response strictly
+    let text = response.text;
+    if (!text) throw new Error("No response text generated");
+    
+    // Clean Markdown wrapper if present (sometimes AI adds ```json ... ```)
+    // Improved regex to handle cases where newline might be missing
+    if (text.startsWith('```json')) {
+      text = text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (text.startsWith('```')) {
+      text = text.replace(/^```\s*/, '').replace(/\s*```$/, '');
     }
+    
+    const examData = JSON.parse(text);
+
+    // Inject manual data that the AI doesn't know about
+    return {
+      ...examData,
+      subject: config.subject || "Mata Pelajaran", // Fallback string to prevent undefined errors
+      schoolName: config.schoolName,
+      schoolLevel: config.schoolLevel,
+      logoUrl: config.logoUrl,
+      headmasterName: config.headmasterName,
+      headmasterNIP: config.headmasterNIP,
+      teacherName: config.teacherName,
+      teacherNIP: config.teacherNIP,
+      date: formattedDate
+    };
+
   } catch (error) {
-    console.error("Error generating exam:", error);
+    console.error("Gemini Generation Error:", error);
     throw error;
   }
 };

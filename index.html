@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GeoExam Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HTML2PDF Library for Direct Download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
       
@@ -17,19 +19,84 @@
         font-family: 'Merriweather', serif;
       }
 
-      /* Standard Print fallback for Ctrl+P */
+      /* --- ULTRA ROBUST PRINT STYLES --- */
       @media print {
-        nav, .no-print {
-          display: none !important;
+        /* 1. Sembunyikan SEMUA elemen di dalam body */
+        body * {
+          visibility: hidden;
         }
-        body {
+
+        /* 2. Kecuali elemen area print dan anak-anaknya */
+        #exam-print-area, #exam-print-area * {
+          visibility: visible;
+        }
+
+        /* 3. Posisikan area print secara absolut di pojok kiri atas */
+        #exam-print-area {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          margin: 0;
+          padding: 0;
+          background-color: white;
+          z-index: 9999; /* Pastikan di atas segalanya */
+        }
+
+        /* 4. Reset style container agar tidak mengganggu */
+        html, body {
+          height: auto;
+          overflow: visible;
           background-color: white;
         }
-        /* Ensure text contrast */
+
+        /* 5. Paksa Warna Hitam Pekat (High Contrast) */
         * {
-          color: black !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
+          color-adjust: exact !important;
+          color: #000 !important;
+          text-shadow: none !important;
+          box-shadow: none !important;
+        }
+
+        /* 6. Styling Tabel Khusus Print */
+        table {
+          border-collapse: collapse;
+          width: 100% !important;
+        }
+        
+        td, th {
+          border-color: #000 !important;
+        }
+
+        /* Class helper untuk border paksa */
+        .print-border {
+          border: 1px solid #000 !important;
+        }
+
+        /* 7. Pagination Control */
+        .page-break-before {
+          page-break-before: always !important;
+          break-before: page !important;
+          margin-top: 2rem !important;
+          display: block;
+        }
+
+        .page-break-inside-avoid {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+
+        /* 8. Sembunyikan elemen interaktif yang mungkin tersisa */
+        button, input, textarea, nav, .no-print {
+          display: none !important;
+        }
+
+        /* 9. Atur Margin Kertas via Browser */
+        @page {
+          margin: 1.5cm 2cm;
+          size: auto; 
         }
       }
     </style>

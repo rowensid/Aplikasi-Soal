@@ -1,3 +1,4 @@
+
 import { SchoolProfile, User, Subject, SchoolLevel } from '../types';
 import { supabase } from '../lib/supabase';
 
@@ -58,10 +59,11 @@ const INITIAL_SUBJECTS: Subject[] = [
   { id: 'sub_sma_6', name: 'Sosiologi', levels: [SchoolLevel.SMA] },
   { id: 'sub_sma_7', name: 'Ekonomi', levels: [SchoolLevel.SMA] },
   { id: 'sub_sma_8', name: 'Sejarah', levels: [SchoolLevel.SMA, SchoolLevel.SMK] },
+  { id: 'sub_sma_9', name: 'Muatan Lokal (Mulok)', levels: [SchoolLevel.SMA] },
 
   // SMK Specific (Vocational)
   { id: 'sub_smk_1', name: 'Dasar Program Keahlian (TKJ/RPL)', levels: [SchoolLevel.SMK] },
-  { id: 'sub_smk_2', name: 'Produk Kreatif & Kewirausahaan', levels: [SchoolLevel.SMK] },
+  { id: 'sub_smk_2', name: 'PKK (Produktif Kreatif dan Kewirausahaan)', levels: [SchoolLevel.SMK] },
   { id: 'sub_smk_3', name: 'Akuntansi Dasar', levels: [SchoolLevel.SMK] },
   { id: 'sub_smk_4', name: 'Administrasi Umum', levels: [SchoolLevel.SMK] },
   { id: 'sub_smk_5', name: 'Informatika', levels: [SchoolLevel.SMA, SchoolLevel.SMK, SchoolLevel.SMP] },
@@ -138,7 +140,8 @@ export const storageService = {
         }));
       } catch (e) { console.warn(e); }
     }
-    const stored = localStorage.getItem('app_subjects');
+    // UPDATED KEY to v5 to ensure new subjects load (Mulok/PKK)
+    const stored = localStorage.getItem('app_subjects_v5');
     return stored ? JSON.parse(stored) : INITIAL_SUBJECTS;
   },
 
@@ -157,17 +160,17 @@ export const storageService = {
     const index = subjects.findIndex(s => s.id === subject.id);
     if (index >= 0) subjects[index] = subject;
     else subjects.push({ ...subject, id: subject.id || `sub_${Date.now()}` });
-    localStorage.setItem('app_subjects', JSON.stringify(subjects));
+    localStorage.setItem('app_subjects_v5', JSON.stringify(subjects));
   },
 
   deleteSubject: async (id: string): Promise<void> => {
     if (supabase) await supabase.from('subjects').delete().eq('id', id);
     const subjects = await storageService.getLocalSubjects();
-    localStorage.setItem('app_subjects', JSON.stringify(subjects.filter(s => s.id !== id)));
+    localStorage.setItem('app_subjects_v5', JSON.stringify(subjects.filter(s => s.id !== id)));
   },
 
   getLocalSubjects: async (): Promise<Subject[]> => {
-    const stored = localStorage.getItem('app_subjects');
+    const stored = localStorage.getItem('app_subjects_v5');
     return stored ? JSON.parse(stored) : INITIAL_SUBJECTS;
   },
 
