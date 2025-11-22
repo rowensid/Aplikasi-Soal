@@ -178,8 +178,15 @@ export const generateExam = async (config: GeneratorConfig): Promise<ExamData> =
     const text = response.text;
     if (!text) throw new Error("No response from AI");
 
-    const parsedData = JSON.parse(text);
+    // Robust JSON Parsing: Handle potential markdown wrapping from AI
+    const cleanText = text.replace(/```json\s*|```/g, '').trim();
+    const parsedData = JSON.parse(cleanText);
     
+    // Ensure subject is safe
+    if (!parsedData.subject) {
+        parsedData.subject = config.subject || "Ujian Sekolah";
+    }
+
     return {
       ...parsedData,
       schoolName: config.schoolName,
