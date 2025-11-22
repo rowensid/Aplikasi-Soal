@@ -94,4 +94,13 @@ export const Login: React.FC<Props> = ({ onLogin }) => {
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
                 <>
-                  Masuk Dashboard
+                  Masuk Dashboard <ArrowRight className="ml-2 w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
