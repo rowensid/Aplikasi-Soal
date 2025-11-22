@@ -23,43 +23,56 @@ Cara termudah dan **GRATIS** untuk meng-online-kan aplikasi ini adalah menggunak
     *   **Root Directory**: Biarkan default (`./`).
 
 3.  **Masukkan Environment Variables (PENTING!)**
-    Di bagian "Environment Variables", kamu wajib memasukkan kunci rahasia agar aplikasi bisa berjalan.
+    Di bagian "Environment Variables", kamu wajib memasukkan kunci rahasia agar aplikasi bisa berjalan. Pastikan **NAMA VARIABEL** (Key) tepat dan tidak kembar.
     
-    *   **Name**: `API_KEY`
-    *   **Value**: `(Copy paste API Key Gemini AI kamu di sini)`
+    *   **Variable 1**
+        *   Name: `API_KEY`
+        *   Value: `(Paste API Key Gemini AI kamu)`
     
-    *Jika menggunakan Supabase (Opsional):*
-    *   **Name**: `SUPABASE_URL` -> **Value**: `(URL Project Supabase)`
-    *   **Name**: `SUPABASE_KEY` -> **Value**: `(Anon Public Key Supabase)`
+    *   **Variable 2** (Link Database)
+        *   Name: `SUPABASE_URL`
+        *   Value: `(Link yang https://...supabase.co)`
+        *   *Tips: Ambil dari Dashboard Supabase -> Settings -> Data API -> Project URL*
+    
+    *   **Variable 3** (Kunci Database)
+        *   Name: `SUPABASE_KEY`
+        *   Value: `(Kode yang berawalan sb_publishable_...)`
+        *   *Tips: Ambil dari Dashboard Supabase -> Settings -> Data API -> Publishable key*
 
 4.  **Klik Deploy**
-    *   Tunggu proses build selesai (sekitar 1-2 menit).
-    *   Setelah selesai, Vercel akan memberikan link domain (contoh: `aplikasi-soal-pro.vercel.app`).
+    *   Tunggu proses build selesai.
     *   Aplikasi kamu sudah online!
 
 ---
 
-## 🛠 Setup Database (Opsional - Supabase)
+## ❓ Troubleshooting (Masalah Umum)
 
-Jika kamu ingin fitur **Simpan Data Sekolah & Guru** permanen (tidak hilang saat refresh), kamu perlu menghubungkan aplikasi ke Supabase.
+### 1. Error Vercel: "A variable with the name ... already exists"
+**Penyebab:** Kamu memasukkan nama variabel yang sama dua kali (misal `SUPABASE_URL` ada dua baris).
+**Solusi:**
+*   Cek baris yang isinya kode panjang (`sb_publishable_...`), ubah Namanya (Key) menjadi `SUPABASE_KEY`.
+*   Cek baris yang isinya link website, pastikan Namanya (Key) adalah `SUPABASE_URL`.
 
-### 1. Environment Variables Local
-Buat file `.env` di komputer kamu untuk testing lokal:
+### 2. Error di Browser: `{"error": "requested path is invalid"}`
+**Penyebab:** Kamu membuka link API Supabase secara langsung di browser.
+**Solusi:** Abaikan saja. Itu normal. Link itu memang bukan untuk dibuka manusia, tapi untuk dicopy ke Environment Variables Vercel.
 
-```env
-# Google Gemini API Key (Wajib)
-API_KEY=masukkan_api_key_disini
+### 3. PDF Kosong / Terpotong
+**Solusi:** Gunakan tombol "Download PDF" (Merah) untuk hasil instan. Jika ingin hasil lebih tajam, gunakan tombol "Cetak (Browser)" lalu pilih "Save as PDF" di pengaturan printer.
 
-# Database (Opsional - Jika kosong, app jalan mode LocalStorage/Offline)
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_KEY=your-public-anon-key
-```
+---
 
-### 2. Skema Database (SQL)
-Jalankan query ini di **SQL Editor** pada Dashboard Supabase kamu:
+## 🛠 Setup Database (Supabase)
 
-#### A. Tabel `schools`
+Agar data Sekolah, Guru, dan Mapel tersimpan online (tidak hilang saat ganti laptop), ikuti langkah ini:
+
+### A. Buat Project & Tabel
+1.  Buka [Supabase.com](https://supabase.com) -> New Project.
+2.  Masuk ke menu **SQL Editor** (ikon Terminal di kiri).
+3.  Copy-Paste kode SQL di bawah ini dan klik **RUN**:
+
 ```sql
+-- 1. Tabel Sekolah
 CREATE TABLE public.schools (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name TEXT NOT NULL,
@@ -70,20 +83,16 @@ CREATE TABLE public.schools (
     address TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
-```
 
-#### B. Tabel `subjects`
-```sql
+-- 2. Tabel Mata Pelajaran
 CREATE TABLE public.subjects (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name TEXT NOT NULL,
-    levels TEXT[] NOT NULL, 
+    levels TEXT[] NOT NULL, -- Array text, contoh: ['SMA', 'SMK']
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
-```
 
-#### C. Tabel `app_users`
-```sql
+-- 3. Tabel User (Guru & Admin)
 CREATE TABLE public.app_users (
     username TEXT PRIMARY KEY,
     password TEXT NOT NULL,
@@ -92,12 +101,32 @@ CREATE TABLE public.app_users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Akun Default
+-- 4. Data Awal (Seeding)
 INSERT INTO public.app_users (username, password, name, role)
 VALUES 
 ('admin', 'admin123', 'Administrator', 'admin'),
 ('guru', 'guru123', 'Guru Mapel', 'user');
+
+INSERT INTO public.subjects (name, levels)
+VALUES 
+('Bahasa Indonesia', ARRAY['SMP','SMA','SMK']),
+('Matematika', ARRAY['SMP','SMA','SMK']),
+('Bahasa Inggris', ARRAY['SMP','SMA','SMK']),
+('PKK (Kewirausahaan)', ARRAY['SMK']);
 ```
+
+### B. Matikan RLS (PENTING!)
+Agar aplikasi bisa membaca dan menulis data tanpa setup auth yang rumit:
+1.  Masuk ke menu **Table Editor** (ikon Tabel).
+2.  Klik pada setiap tabel (`schools`, `subjects`, `app_users`).
+3.  Lihat di pojok kanan atas tabel, jika ada tulisan **RLS Enabled** (hijau), klik lalu pilih **Disable RLS**.
+4.  Lakukan untuk ketiga tabel tersebut.
+
+### C. Ambil URL & Key
+1.  Klik menu **Settings** (ikon Gerigi ⚙️) di pojok kiri bawah.
+2.  Pilih **Data API** (atau API).
+3.  Salin **Project URL** -> Masukkan ke Vercel sebagai `SUPABASE_URL`.
+4.  Salin **Publishable Key (anon)** -> Masukkan ke Vercel sebagai `SUPABASE_KEY`.
 
 ---
 
@@ -107,16 +136,12 @@ VALUES
     ```bash
     npm install
     ```
-2.  **Jalankan Server**
+2.  **Buat file .env**
+    Copy file `.env.example` menjadi `.env` dan isi data kunci yang didapat dari langkah di atas.
+    ```bash
+    cp .env.example .env
+    ```
+3.  **Jalankan App**
     ```bash
     npm start
     ```
-    Buka [http://localhost:3000](http://localhost:3000) di browser.
-
----
-
-## Troubleshooting
-
-*   **Error: API Key Missing**: Pastikan kamu sudah memasukkan `API_KEY` di Environment Variables Vercel.
-*   **Halaman Putih saat Deploy**: Cek "Logs" di dashboard Vercel. Biasanya karena ada error kodingan atau build script yang salah.
-*   **Gambar Logo Tidak Muncul di PDF**: Pastikan URL gambar logo mendukung CORS (bisa diakses publik) atau gunakan link gambar dari Wikipedia/Imgur.

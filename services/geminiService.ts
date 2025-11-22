@@ -2,10 +2,31 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { ExamData, GeneratorConfig, SchoolLevel } from '../types';
 import { CURRICULUM_CONTEXT } from './curriculumData';
 
-// Initialize the API client with the key from the environment
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// ROBUST ENV HANDLING:
+// Check both standard process.env (Node/CRA) and import.meta.env (Vite/Vercel)
+// Vercel requires 'VITE_' prefix for variables exposed to the browser.
+const getEnvVar = (key: string, viteKey: string) => {
+  // @ts-ignore
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[viteKey]) {
+    // @ts-ignore
+    return import.meta.env[viteKey];
+  }
+  if (typeof process !== 'undefined' && process.env && process.env[key]) {
+    return process.env[key];
+  }
+  return undefined;
+};
+
+const API_KEY = getEnvVar('API_KEY', 'VITE_API_KEY');
+
+// Initialize the API client
+const ai = new GoogleGenAI({ apiKey: API_KEY || '' });
 
 export const generateExam = async (config: GeneratorConfig): Promise<ExamData> => {
+  if (!API_KEY) {
+    throw new Error("API KEY Missing. Please check Vercel Environment Variables (VITE_API_KEY).");
+  }
+
   // gemini-2.5-flash is suitable for high-volume text generation tasks with good reasoning
   const modelId = 'gemini-2.5-flash';
   
@@ -99,11 +120,7 @@ export const generateExam = async (config: GeneratorConfig): Promise<ExamData> =
     5. **Formatting Rules**: 
        - **CLEAN TEXT ONLY**: Do NOT use Markdown formatting (like **bold**, *italic*, or lists) inside the JSON values. The output will be put into raw text inputs, so symbols look messy. Use newlines (\\n) for formatting.
        - **Options**: Do NOT include the letter prefix (e.g., "A.", "B.") in the option text. Just provide the answer text.
-       - **CorrectAnswer**: Just the letter (e.g., "A", "B").
-       - **Output**: Strictly valid JSON. 
-       - Language: Formal Indonesian (Ejaan Yang Disempurnakan).
-
-    Generate the full exam package now.
+       - **CorrectAnswer**: Must be just the letter (A, B, C, D, or E).
   `;
 
   try {
@@ -112,11 +129,11 @@ export const generateExam = async (config: GeneratorConfig): Promise<ExamData> =
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-        // We leave maxOutputTokens flexible to ensure full exam generation
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            title: { type: Type.STRING, description: `Formal title, e.g., 'SUMATIF AKHIR SEMESTER ${subject.toUpperCase()}'` },
+            title: { type: Type.STRING },
+            subject: { type: Type.STRING },
             grade: { type: Type.STRING },
             semester: { type: Type.STRING },
             multipleChoice: {
@@ -125,19 +142,15 @@ export const generateExam = async (config: GeneratorConfig): Promise<ExamData> =
                 type: Type.OBJECT,
                 properties: {
                   id: { type: Type.INTEGER },
-                  question: { type: Type.STRING, description: "Plain text only, no markdown." },
-                  options: { 
-                    type: Type.ARRAY, 
-                    items: { type: Type.STRING },
-                    description: "Array of 5 strings. Do NOT include 'A.' or 'B.' prefixes. Plain text only."
-                  },
-                  correctAnswer: { type: Type.STRING, description: "Just the letter, e.g., 'A'" },
-                  cp: { type: Type.STRING, description: "Capaian Pembelajaran (Fill with relevant competency)" },
-                  atp: { type: Type.STRING, description: "Alur Tujuan Pembelajaran (Fill with specific objective)" },
-                  material: { type: Type.STRING, description: "Materi (Must be filled)" },
-                  indicator: { type: Type.STRING, description: "Indikator Soal (Must be filled)" },
+                  question: { type: Type.STRING },
+                  options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  correctAnswer: { type: Type.STRING },
+                  cp: { type: Type.STRING },
+                  atp: { type: Type.STRING },
+                  material: { type: Type.STRING },
+                  indicator: { type: Type.STRING }
                 },
-                required: ["id", "question", "options", "correctAnswer", "cp", "atp", "material", "indicator"]
+                required: ['id', 'question', 'options', 'correctAnswer', 'cp', 'atp', 'material', 'indicator']
               }
             },
             essay: {
@@ -146,52 +159,40 @@ export const generateExam = async (config: GeneratorConfig): Promise<ExamData> =
                 type: Type.OBJECT,
                 properties: {
                   id: { type: Type.INTEGER },
-                  question: { type: Type.STRING, description: "Plain text only." },
-                  answerKey: { type: Type.STRING, description: "Full answer + Rubric. Use newlines for structure. Plain text only, no markdown." },
-                  cp: { type: Type.STRING, description: "Capaian Pembelajaran (Fill with relevant competency)" },
-                  atp: { type: Type.STRING, description: "Alur Tujuan Pembelajaran (Fill with specific objective)" },
-                  material: { type: Type.STRING, description: "Materi (Must be filled)" },
-                  indicator: { type: Type.STRING, description: "Indikator Soal (Must be filled)" },
+                  question: { type: Type.STRING },
+                  answerKey: { type: Type.STRING },
+                  cp: { type: Type.STRING },
+                  atp: { type: Type.STRING },
+                  material: { type: Type.STRING },
+                  indicator: { type: Type.STRING }
                 },
-                required: ["id", "question", "answerKey", "cp", "atp", "material", "indicator"]
+                required: ['id', 'question', 'answerKey', 'cp', 'atp', 'material', 'indicator']
               }
             }
           },
-          required: ["title", "grade", "semester", "multipleChoice", "essay"]
+          required: ['title', 'subject', 'grade', 'semester', 'multipleChoice', 'essay']
         }
       }
     });
 
-    // Parse response strictly
-    let text = response.text;
-    if (!text) throw new Error("No response text generated");
-    
-    // Clean Markdown wrapper if present (sometimes AI adds ```json ... ```)
-    // Improved regex to handle cases where newline might be missing
-    if (text.startsWith('```json')) {
-      text = text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (text.startsWith('```')) {
-      text = text.replace(/^```\s*/, '').replace(/\s*```$/, '');
-    }
-    
-    const examData = JSON.parse(text);
+    const text = response.text;
+    if (!text) throw new Error("No response from AI");
 
-    // Inject manual data that the AI doesn't know about
+    const parsedData = JSON.parse(text);
+    
     return {
-      ...examData,
-      subject: config.subject || "Mata Pelajaran", // Fallback string to prevent undefined errors
+      ...parsedData,
       schoolName: config.schoolName,
-      schoolLevel: config.schoolLevel,
       logoUrl: config.logoUrl,
       headmasterName: config.headmasterName,
       headmasterNIP: config.headmasterNIP,
       teacherName: config.teacherName,
       teacherNIP: config.teacherNIP,
       date: formattedDate
-    };
+    } as ExamData;
 
   } catch (error) {
-    console.error("Gemini Generation Error:", error);
+    console.error("Gemini API Error:", error);
     throw error;
   }
 };
